@@ -36,6 +36,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.viewmodel)
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(projects.shared)
+            implementation(libs.composeIcons.fontAwesome)
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
@@ -73,6 +74,8 @@ android {
 
 dependencies {
     implementation(libs.firebase.firestore.ktx)
+    implementation(libs.androidx.ui.text.android)
+    implementation(libs.androidx.ui.android)
     debugImplementation(compose.uiTooling)
 }
 

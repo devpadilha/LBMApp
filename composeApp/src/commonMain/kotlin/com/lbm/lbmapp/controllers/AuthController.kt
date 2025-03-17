@@ -7,10 +7,12 @@ class AuthController {
     fun validateCredentials(
         username: String,
         password: String,
-        onSuccess: () -> Unit
+        onSuccess: () -> Unit,
+        param: (Any) -> Unit
     ) {
         if (username == adminUser.username && password == adminUser.password) {
             onSuccess()
+            TODO("Implemetar banco de dados")
         } else {
             throw Exception()
         }
