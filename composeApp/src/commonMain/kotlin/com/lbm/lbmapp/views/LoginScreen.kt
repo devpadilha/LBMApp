@@ -8,7 +8,6 @@ import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
@@ -43,7 +42,7 @@ fun LoginScreen(
     authController: AuthController,
     onLoginSuccess: () -> Unit
 ) {
-    val isDesktop = Platform.isDesktop() // Padrão singleton para aferir se é desktop ou não
+    val isDesktop = Platform.isDesktop()
     var username by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
@@ -53,7 +52,19 @@ fun LoginScreen(
     var isDarkTheme by remember { mutableStateOf(false) }
     val (usernameFocus, passwordFocus) = remember { FocusRequester.createRefs() }
 
-    // Função para tentar efetuar o login
+    // Função para criar o modificador comum dos campos de texto
+    fun commonTextFieldModifier(
+        isDesktop: Boolean,
+        focusRequester: FocusRequester,
+        onKeyEvent: (keyEvent: androidx.compose.ui.input.key.KeyEvent) -> Boolean
+    ): Modifier {
+        return Modifier
+            .fillMaxWidth(if (isDesktop) 0.4f else 1f)
+            .focusRequester(focusRequester)
+            .onKeyEvent(onKeyEvent)
+    }
+
+    // Função centralizada de login
     fun attemptLogin() {
         focusManager.clearFocus()
         if (username.isBlank() || password.isBlank()) {
@@ -70,12 +81,54 @@ fun LoginScreen(
         }
     }
 
+    // Componente reutilizável para campos de texto
+    @Composable
+    fun CustomTextField(
+        value: String,
+        onValueChange: (String) -> Unit,
+        label: String,
+        isPassword: Boolean = false,
+        showPassword: Boolean = false,
+        focusRequester: FocusRequester,
+        imeAction: ImeAction,
+        keyboardActions: KeyboardActions,
+        trailingIcon: @Composable() (() -> Unit)? = null,
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = { newValue ->
+                onValueChange(newValue.filter { it !in listOf('\t', '\n') })
+            },
+            label = { Text(label, color = MaterialTheme.colors.onSurface) },
+            visualTransformation = if (isPassword && !showPassword) PasswordVisualTransformation() else VisualTransformation.None,
+            trailingIcon = trailingIcon,
+            modifier = commonTextFieldModifier(isDesktop, focusRequester) { keyEvent ->
+                when (keyEvent.key) {
+                    Key.Tab -> {
+                        if (isPassword) usernameFocus.requestFocus() else passwordFocus.requestFocus()
+                        true
+                    }
+                    Key.Enter -> {
+                        attemptLogin()
+                        true
+                    }
+                    else -> false
+                }
+            },
+            keyboardOptions = KeyboardOptions(imeAction = imeAction),
+            keyboardActions = keyboardActions,
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                textColor = MaterialTheme.colors.onSurface,
+                cursorColor = MaterialTheme.colors.primary,
+                focusedBorderColor = MaterialTheme.colors.primary
+            )
+        )
+    }
+
     LbmTheme(darkTheme = isDarkTheme) {
-        Surface(
-            color = MaterialTheme.colors.background
-        ) {
-            // Botão para alternar o tema
+        Surface(color = MaterialTheme.colors.background) {
             Box(modifier = Modifier.fillMaxSize()) {
+                // Ícone de alternar tema
                 IconButton(
                     onClick = { isDarkTheme = !isDarkTheme },
                     modifier = Modifier
@@ -85,195 +138,126 @@ fun LoginScreen(
                 ) {
                     Icon(
                         imageVector = if (isDarkTheme) FontAwesomeIcons.Solid.Moon else FontAwesomeIcons.Solid.Sun,
-                        contentDescription = if (isDarkTheme) "tema claro" else "tema escuro",
+                        contentDescription = if (isDarkTheme) "Tema escuro" else "Tema claro",
                         tint = MaterialTheme.colors.onBackground,
                         modifier = Modifier.size(24.dp)
                     )
                 }
-            }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(32.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Logo no topo da tela
-                Image(
-                    painter = painterResource(Res.drawable.logo_lbm),
-                    contentDescription = "Logo",
-                    modifier = Modifier.size(200.dp)
-                )
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Campo de usuário
-                OutlinedTextField(
-                    value = username,
-                    onValueChange = { newValue ->
-                        username = newValue.filter { it !in listOf('\t', '\n') }
-                    },
-                    label = { Text("Usuário", color = MaterialTheme.colors.onSurface) },
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth(if (isDesktop) 0.4f else 1f)
-                        .focusRequester(usernameFocus)
-                        .onKeyEvent { keyEvent ->
-                            when (keyEvent.key) {
-                                Key.Tab -> {
-                                    passwordFocus.requestFocus()
-                                    true
-                                }
-
-                                Key.Enter -> {
-                                    attemptLogin()
-                                    true
-                                }
-
-                                else -> false
-                            }
-                        },
-                    // Configurações do teclado
-                    keyboardOptions = KeyboardOptions(
-                        // Define a ação do botão "Enter" no teclado como "Próximo"
-                        imeAction = ImeAction.Next
-                    ),
-                    keyboardActions = KeyboardActions(
-                        // Define o comportamento quando o botão "Próximo" é pressionado
-                        onNext = { focusManager.moveFocus(FocusDirection.Down) }
-                    ),
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
-                        textColor = MaterialTheme.colors.onSurface,
-                        cursorColor = MaterialTheme.colors.primary,
-                        focusedBorderColor = MaterialTheme.colors.primary
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Campo de senha
-                OutlinedTextField(
-                    value = password,
-                    onValueChange = { newValue ->
-                        password = newValue.filter { it !in listOf('\t', '\n') }
-                    },
-                    label = { Text("Senha", color = MaterialTheme.colors.onSurface) },
-                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                    trailingIcon = {
-                        IconButton(
-                            onClick = { showPassword = !showPassword },
-                            modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
-                        ) {
-                            Icon(
-                                imageVector = if (showPassword) FontAwesomeIcons.Solid.EyeSlash else FontAwesomeIcons.Solid.Eye,
-                                contentDescription = if (showPassword) "Ocultar senha" else "Mostrar senha",
-                                modifier = Modifier.size(24.dp),
-                                tint = MaterialTheme.colors.onSurface
-                            )
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth(if (isDesktop) 0.4f else 1f)
-                        .focusRequester(passwordFocus)
-                        .onKeyEvent { keyEvent ->
-                            when (keyEvent.key) {
-                                Key.Tab -> {
-                                    usernameFocus.requestFocus()
-                                    true
-                                }
-
-                                Key.Enter -> {
-                                    attemptLogin()
-                                    true
-                                }
-
-                                else -> false
-                            }
-                        },
-                    // Configurações do teclado
-                    keyboardOptions = KeyboardOptions(
-                        // Define a ação do botão "Enter" no teclado como "Concluir"
-                        imeAction = ImeAction.Done
-                    ),
-                    keyboardActions = KeyboardActions(
-                        // Define o comportamento quando o botão "Concluir" é pressionado
-                        onDone = { focusManager.clearFocus() }
-                    ),
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
-                        textColor = MaterialTheme.colors.onSurface,
-                        cursorColor = MaterialTheme.colors.primary,
-                        focusedBorderColor = MaterialTheme.colors.primary
-                    )
-                )
-
-                // Mensagem de erro
-                errorMessage?.let {
-                    Text(
-                        text = it,
-                        color = MaterialTheme.colors.error,
-                        modifier = Modifier.padding(vertical = 8.dp)
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                // Botão de login
-                Button(
-                    onClick = {
-                        focusManager.clearFocus()
-                        if (username.isBlank() || password.isBlank()) {
-                            errorMessage = "Preencha todos os campos"
-                        } else {
-                            isLoading = true
-                            authController.validateCredentials(username, password, {
-                                isLoading = false
-                                onLoginSuccess()
-                            }, {
-                                isLoading = false
-                                errorMessage = "Erro ao tentar fazer login"
-                            })
-                        }
-                    },
-                    enabled = !isLoading,
-                    modifier = Modifier
-                        .fillMaxWidth(if (isDesktop) 0.25f else 1f)
-                        .height(50.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        backgroundColor = MaterialTheme.colors.primary,
-                        contentColor = MaterialTheme.colors.onPrimary
-                    )
+                        .fillMaxSize()
+                        .padding(32.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            color = MaterialTheme.colors.onPrimary
+                    Image(
+                        painter = painterResource(Res.drawable.logo_lbm),
+                        contentDescription = "Logo",
+                        modifier = Modifier.size(200.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Campo de Usuário
+                    CustomTextField(
+                        value = username,
+                        onValueChange = { username = it },
+                        label = "Usuário",
+                        focusRequester = usernameFocus,
+                        imeAction = ImeAction.Next,
+                        keyboardActions = KeyboardActions(
+                            onNext = { passwordFocus.requestFocus() }
                         )
-                    } else {
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // Campo de Senha
+                    CustomTextField(
+                        value = password,
+                        onValueChange = { password = it },
+                        label = "Senha",
+                        isPassword = true,
+                        showPassword = showPassword,
+                        focusRequester = passwordFocus,
+                        imeAction = ImeAction.Done,
+                        keyboardActions = KeyboardActions(
+                            onDone = { attemptLogin() }
+                        ),
+                        trailingIcon = {
+                            IconButton(
+                                onClick = { showPassword = !showPassword },
+                                modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
+                            ) {
+                                Icon(
+                                    imageVector = if (showPassword) FontAwesomeIcons.Solid.EyeSlash else FontAwesomeIcons.Solid.Eye,
+                                    contentDescription = if (showPassword) "Ocultar senha" else "Mostrar senha",
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colors.onSurface
+                                )
+                            }
+                        }
+                    )
+
+                    // Mensagem de erro
+                    errorMessage?.let {
                         Text(
-                            text = "Entrar",
-                            color = MaterialTheme.colors.onPrimary
+                            text = it,
+                            color = MaterialTheme.colors.error,
+                            modifier = Modifier.padding(vertical = 8.dp)
                         )
                     }
-                }
 
-                Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(24.dp))
 
-                // Texto "Esqueci a Senha"
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(
-                            style = SpanStyle(
-                                color = MaterialTheme.colors.error,
-                                textDecoration = TextDecoration.Underline
+                    // Botão de login
+                    Button(
+                        onClick = { attemptLogin() },
+                        enabled = !isLoading,
+                        modifier = Modifier
+                            .fillMaxWidth(if (isDesktop) 0.25f else 1f)
+                            .pointerHoverIcon(PointerIcon.Hand)
+                            .height(50.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            backgroundColor = MaterialTheme.colors.primary,
+                            contentColor = MaterialTheme.colors.onPrimary
+                        )
+                    ) {
+                        if (isLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = MaterialTheme.colors.onPrimary
                             )
-                        ) {
-                            append("Esqueci a Senha")
+                        } else {
+                            Text(
+                                text = "Entrar",
+                                color = MaterialTheme.colors.onPrimary
+                            )
                         }
-                    },
-                    modifier = Modifier.padding(top = 8.dp),
-                    color = MaterialTheme.colors.error,
-                    style = MaterialTheme.typography.body1
-                )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Texto "Esqueci a Senha"
+                    Text(
+                        text = buildAnnotatedString {
+                            withStyle(
+                                style = SpanStyle(
+                                    color = MaterialTheme.colors.error,
+                                    textDecoration = TextDecoration.Underline
+                                )
+                            ) {
+                                append("Esqueci a Senha")
+                            }
+                        },
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .pointerHoverIcon(PointerIcon.Hand),
+                        color = MaterialTheme.colors.error,
+                        style = MaterialTheme.typography.body1
+                    )
+                }
             }
         }
     }
