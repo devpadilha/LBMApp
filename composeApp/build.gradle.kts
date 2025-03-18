@@ -37,6 +37,7 @@ kotlin {
             implementation(libs.androidx.lifecycle.runtime.compose)
             implementation(projects.shared)
             implementation(libs.composeIcons.fontAwesome)
+            implementation(libs.components.resources)
         }
         desktopMain.dependencies {
             implementation(compose.desktop.currentOs)
@@ -89,4 +90,10 @@ compose.desktop {
             packageVersion = "1.0.0"
         }
     }
+}
+
+compose.resources {
+    publicResClass = false
+    packageOfResClass = "com.lbm.lbmapp.generated.resources"
+    generateResClass = auto
 }
