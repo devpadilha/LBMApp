@@ -3,6 +3,7 @@ package com.lbm.lbmapp
 import androidx.compose.runtime.*
 import com.lbm.lbmapp.controllers.AuthController
 import com.lbm.lbmapp.ui.theme.LbmTheme
+import com.lbm.lbmapp.viewmodels.LoginViewModel
 import com.lbm.lbmapp.views.LoginScreen
 import com.lbm.lbmapp.views.MainScreen
 import org.jetbrains.compose.ui.tooling.preview.Preview
@@ -18,7 +19,7 @@ fun App() {
             MainScreen()
         } else {
             LoginScreen(
-                authController = authController,
+                viewModel = LoginViewModel(authController),
                 onLoginSuccess = { isLoggedIn = true }
             )
         }

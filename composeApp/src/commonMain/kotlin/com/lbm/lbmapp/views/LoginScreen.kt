@@ -15,7 +15,6 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.input.ImeAction
@@ -24,7 +23,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import com.lbm.lbmapp.controllers.AuthController
+import com.lbm.lbmapp.viewmodels.LoginViewModel
 import com.lbm.lbmapp.generated.resources.Res
 import compose.icons.FontAwesomeIcons
 import compose.icons.fontawesomeicons.Solid
@@ -39,16 +38,15 @@ import com.lbm.lbmapp.generated.resources.logo_lbm
 
 @Composable
 fun LoginScreen(
-    authController: AuthController,
+    viewModel: LoginViewModel,
     onLoginSuccess: () -> Unit
 ) {
     val isDesktop = Platform.isDesktop()
-    var username by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
-    var showPassword by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-    var isLoading by remember { mutableStateOf(false) }
-    val focusManager = LocalFocusManager.current
+    val username by remember { viewModel::username }
+    val password by remember { viewModel::password }
+    val showPassword by remember { viewModel::showPassword }
+    val isLoading by remember { viewModel::isLoading }
+    val errorMessage by remember { viewModel::errorMessage }
     var isDarkTheme by remember { mutableStateOf(false) }
     val (usernameFocus, passwordFocus) = remember { FocusRequester.createRefs() }
 
@@ -62,23 +60,6 @@ fun LoginScreen(
             .fillMaxWidth(if (isDesktop) 0.4f else 1f)
             .focusRequester(focusRequester)
             .onKeyEvent(onKeyEvent)
-    }
-
-    // Função centralizada de login
-    fun attemptLogin() {
-        focusManager.clearFocus()
-        if (username.isBlank() || password.isBlank()) {
-            errorMessage = "Preencha todos os campos"
-        } else {
-            isLoading = true
-            authController.validateCredentials(username, password, {
-                isLoading = false
-                onLoginSuccess()
-            }, {
-                isLoading = false
-                errorMessage = "Erro ao tentar fazer login"
-            })
-        }
     }
 
     // Componente reutilizável para campos de texto
@@ -108,10 +89,12 @@ fun LoginScreen(
                         if (isPassword) usernameFocus.requestFocus() else passwordFocus.requestFocus()
                         true
                     }
+
                     Key.Enter -> {
-                        attemptLogin()
+                        viewModel.attemptLogin(onLoginSuccess)
                         true
                     }
+
                     else -> false
                 }
             },
@@ -162,7 +145,7 @@ fun LoginScreen(
                     // Campo de Usuário
                     CustomTextField(
                         value = username,
-                        onValueChange = { username = it },
+                        onValueChange = { viewModel.updateUsername(it) },
                         label = "Usuário",
                         focusRequester = usernameFocus,
                         imeAction = ImeAction.Next,
@@ -176,18 +159,18 @@ fun LoginScreen(
                     // Campo de Senha
                     CustomTextField(
                         value = password,
-                        onValueChange = { password = it },
+                        onValueChange = { viewModel.updatePassword(it) },
                         label = "Senha",
                         isPassword = true,
                         showPassword = showPassword,
                         focusRequester = passwordFocus,
                         imeAction = ImeAction.Done,
                         keyboardActions = KeyboardActions(
-                            onDone = { attemptLogin() }
+                            onDone = { viewModel.attemptLogin(onLoginSuccess) }
                         ),
                         trailingIcon = {
                             IconButton(
-                                onClick = { showPassword = !showPassword },
+                                onClick = { viewModel.toggleShowPassword() },
                                 modifier = Modifier.pointerHoverIcon(PointerIcon.Hand)
                             ) {
                                 Icon(
@@ -213,11 +196,10 @@ fun LoginScreen(
 
                     // Botão de login
                     Button(
-                        onClick = { attemptLogin() },
+                        onClick = { viewModel.attemptLogin(onLoginSuccess) },
                         enabled = !isLoading,
                         modifier = Modifier
                             .fillMaxWidth(if (isDesktop) 0.25f else 1f)
-                            .pointerHoverIcon(PointerIcon.Hand)
                             .height(50.dp),
                         colors = ButtonDefaults.buttonColors(
                             backgroundColor = MaterialTheme.colors.primary,

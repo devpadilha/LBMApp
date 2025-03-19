@@ -8,13 +8,13 @@ class AuthController {
         username: String,
         password: String,
         onSuccess: () -> Unit,
-        param: (Any) -> Unit
+        onFailure: () -> Unit,
     ) {
         if (username == adminUser.username && password == adminUser.password) {
             onSuccess()
             TODO("Implemetar banco de dados")
         } else {
-            throw Exception()
+            onFailure()
         }
     }
 }
